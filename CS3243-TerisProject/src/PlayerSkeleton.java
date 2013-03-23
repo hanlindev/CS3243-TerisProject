@@ -604,12 +604,31 @@ public class PlayerSkeleton {
  * and to hold the action that leads to this state
  */
 class myState extends State implements Comparable<myState> {
+	private class Triplet {
+		public int x, y, turn;
+		public Triplet(int x, int y, int turn) {
+			this.x = x;
+			this.y = y;
+			this.turn = turn;
+		}
+	}
+	
+	private class Pair {
+		public int x, height;
+		public Pair(int x, int height) {
+			this.x = x;
+			this.height = height;
+		}
+	}
 	// Previous move that led to this state
 	private int nextMove;
 	// The score of this state (utility)
 	private double score;
 	// number of negative permits assigned to semaphore.
 	public static int numPermits;
+	// Records the rounds of changes
+	Stack<Stack<Triplet>> roundsOfChangesField;
+	Stack<Stack<Pair>> roundsOfChangesTop;
 	
 	public static final int COLS = 10;
 	public static final int ROWS = 21;
@@ -628,6 +647,7 @@ class myState extends State implements Comparable<myState> {
 	//current turn
 	private int turn = 0;
 	private int cleared = 0;
+	private int justCleared = 0;
 	
 	//each square in the grid - int means empty - other values mean the turn it was placed
 	private int[][] field = new int[ROWS][COLS];
@@ -751,6 +771,10 @@ class myState extends State implements Comparable<myState> {
     public static int[][][] getpTop() {
         return pTop;
     }
+    
+    public static int[][] getLegalMoves(int i) {
+    	return legalMoves[i];
+    }
 
 
 	public int getNextPiece() {
@@ -777,6 +801,10 @@ class myState extends State implements Comparable<myState> {
 		return score;
 	}
 	
+	public int getJustCleared() {
+		return justCleared;
+	}
+	
 	public void setNextPiece(int np ) {
 		nextPiece = np;
 	}
@@ -785,9 +813,23 @@ class myState extends State implements Comparable<myState> {
 		score = sc;
 	}
 	
+	// Reset rounds of changes
+	public void reset() {
+		roundsOfChangesField = new Stack<Stack<Triplet>>();
+		roundsOfChangesTop = new Stack<Stack<Pair>>();
+	}
+	
 	//constructor
 	public myState(State s) {
 		copyState(s);
+		reset();
+	}
+	
+	public myState(State s, int newPiece, int newMove) {
+		copyState(s);
+		nextPiece = newPiece;
+		nextMove = newMove;
+		reset();
 	}
 	
 	public myState(State s, int newPiece, int newMove, double points) {
@@ -795,6 +837,7 @@ class myState extends State implements Comparable<myState> {
 		nextPiece = newPiece;
 		nextMove = newMove;
 		score = points;
+		reset();
 	}
 	
 	private int[] copy1Array(int[] arr) {
@@ -853,6 +896,8 @@ class myState extends State implements Comparable<myState> {
 	
 	//returns false if you lose - true otherwise
 	public boolean makeMove(int orient, int slot) {
+		Stack<Triplet> fieldChanges = new Stack<Triplet>();
+		Stack<Pair> topChanges = new Stack<Pair>();
 		turn++;
 		//height if the first column makes contact
 		int height = top[slot]-pBottom[nextPiece][orient][0];
@@ -873,12 +918,14 @@ class myState extends State implements Comparable<myState> {
 			
 			//from bottom to top of brick
 			for(int h = height+pBottom[nextPiece][orient][i]; h < height+pTop[nextPiece][orient][i]; h++) {
+				fieldChanges.push(new Triplet(h, i+slot, field[h][i+slot]));
 				field[h][i+slot] = turn;
 			}
 		}
 		
 		//adjust top
 		for(int c = 0; c < pWidth[nextPiece][orient]; c++) {
+			topChanges.push(new Pair(slot+c, top[slot+c]));
 			top[slot+c]=height+pTop[nextPiece][orient][c];
 		}
 		
@@ -903,9 +950,12 @@ class myState extends State implements Comparable<myState> {
 
 					//slide down all bricks
 					for(int i = r; i < top[c]; i++) {
+						fieldChanges.push(new Triplet(i, c, field[i][c]));
+						fieldChanges.push(new Triplet(i+1, c, field[i+1][c]));
 						field[i][c] = field[i+1][c];
 					}
 					//lower the top
+					topChanges.push(new Pair(c, top[c]));
 					top[c]--;
 					while(top[c]>=1 && field[top[c]-1][c]==0)	top[c]--;
 				}
@@ -914,11 +964,29 @@ class myState extends State implements Comparable<myState> {
 	
 
 		//pick a new piece
-		nextPiece = randomPiece();
-		
-
-		
+		//nextPiece = randomPiece();
+		justCleared = rowsCleared;
+		roundsOfChangesField.push(fieldChanges);
+		roundsOfChangesTop.push(topChanges);
 		return true;
+	}
+	
+	// Undo the last round of change taken from the stack if there is nothin
+	// in the stack, return false. Otherwise return true;
+	public boolean undo() {
+		if (!roundsOfChangesField.isEmpty()) {
+			Stack<Triplet> fieldChanges = roundsOfChangesField.pop();
+			Stack<Pair> topChanges = roundsOfChangesTop.pop();
+			while (!fieldChanges.isEmpty()) {
+				Triplet F = fieldChanges.pop();
+				Pair T = topChanges.pop();
+				field[F.x][F.y] = F.turn;
+				top[T.x] = T.height;
+			}
+			return true;
+		} else {
+			return false;
+		}
 	}
 	
 	public void draw() {
@@ -977,7 +1045,8 @@ class myState extends State implements Comparable<myState> {
 	
 	@Override
 	public int compareTo(myState aMyState) {
-		double result = score - aMyState.getScore();
+		double result = aMyState.getScore() - score;
+		//double result = aMyState.getScore() - score;
 		if (result < 0) {
 			return -1;
 		} else if (result > 0) {
