@@ -1,4 +1,6 @@
 import java.awt.Color;
+import java.util.*;
+import java.util.concurrent.*;
 
 public class PlayerSkeleton {
 
@@ -477,9 +479,10 @@ public class PlayerSkeleton {
 	public int pickMove(State s, int[][] legalMoves) {
 		int minId = 0;
 		double temp;
-		double cost = utilityFunction(s, legalMoves[0]);
+		double cost = Double.MAX_VALUE;
 		// choose the one with smallest cost
-		for (int i = 1; i < legalMoves.length; i++) {
+		/*
+		for (int i = 0; i < legalMoves.length; i++) {
 			temp = utilityFunction(s, legalMoves[i]);
 			if (temp < cost) {
 				cost = temp;
@@ -487,10 +490,93 @@ public class PlayerSkeleton {
 			}
 
 		}
+		*/
+		
+		for (int i = 0; i < legalMoves.length; ++i) {
+			// Create an instance of the current game
+			// board to simulate
+			myState ms = new myState(s);
+			// Make the move on the virtual game board
+			ms.makeMove(i);
+			// A two step look ahead
+			if (!ms.hasLost()) {
+				temp = lookAhead(ms, 2);
+				if (temp < cost) {
+					cost = temp;
+					minId = i;
+				}
+			}
+		}
+		System.out.println("Cost: " + cost);
 		return minId;
+	}
+	
+	/**
+	 * lookAhead
+	 * @param s the current state 
+	 * @param step the remaining steps we need to look ahead. E.g.
+	 *        if we want to look ahead 1 step, it should be 1.
+	 * @return the best utility we can achieve from this state
+	 */
+	private double lookAhead(myState s, int step) {
+		if (step > 0) {
+			PriorityQueue<myState> pq = new PriorityQueue<myState>();
+			for (int i = 0; i < myState.N_PIECES; ++i) {
+				// Pick one piece and set it as the next piece
+				s.setNextPiece(i);
+				// Get the legal moves
+				int[][] legalMoves = s.legalMoves();
+				// Iterate through the legal moves and push them into the pq
+				for (int j = 0; j < legalMoves.length; ++j) {
+					double score = utilityFunction(s, legalMoves[j]);
+					myState aNewState = new myState(s, i, j, score);
+					pq.offer(aNewState);
+				}
+			}
+			
+			double totalScore = 0D;
+			int numExpansion = 5;
+			// Choose the best 5 states to expand
+			for (int i = 0; i < numExpansion; ++i) {
+				myState aGoodState = pq.poll();
+				aGoodState.makeMove(aGoodState.getNextMove());
+				totalScore += lookAhead(aGoodState, step - 1);
+			}
+			
+			return totalScore / (double) numExpansion;
+		} else {
+			double totalScore = 0D;
+			int numEvaluation = 0;
+			for (int i = 0; i < myState.N_PIECES; ++i) {
+				s.setNextPiece(i);
+				int[][] legalMoves = s.legalMoves();
+				for (int j = 0; j < legalMoves.length; ++j) {
+					totalScore += utilityFunction(s, legalMoves[j]);
+					++numEvaluation;
+				}
+			}
+			return totalScore / (double) numEvaluation;
+		}
 	}
 
 	public static void main(String[] args) {
+		State s = new State();
+		myState ms = new myState(s);
+		new TFrame(ms);
+		PlayerSkeleton p = new PlayerSkeleton();
+		while (!ms.hasLost()) {
+			ms.makeMove(p.pickMove(ms, ms.legalMoves()));
+			ms.draw();
+			ms.drawNext(0, 0);
+			try {
+				Thread.sleep(3);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		System.out.println("You have completed " + ms.getRowsCleared()
+				+ " rows.");
+		/*
 		State s = new State();
 		new TFrame(s);
 		PlayerSkeleton p = new PlayerSkeleton();
@@ -506,6 +592,7 @@ public class PlayerSkeleton {
 		}
 		System.out.println("You have completed " + s.getRowsCleared()
 				+ " rows.");
+				*/
 	}
 
 }
@@ -518,9 +605,11 @@ public class PlayerSkeleton {
  */
 class myState extends State implements Comparable<myState> {
 	// Previous move that led to this state
-	private int previousMove;
+	private int nextMove;
 	// The score of this state (utility)
-	private int score;
+	private double score;
+	// number of negative permits assigned to semaphore.
+	public static int numPermits;
 	
 	public static final int COLS = 10;
 	public static final int ROWS = 21;
@@ -534,7 +623,7 @@ class myState extends State implements Comparable<myState> {
 	
 
 	
-	public TLabel label;
+	//public TLabel label;
 	
 	//current turn
 	private int turn = 0;
@@ -606,6 +695,7 @@ class myState extends State implements Comparable<myState> {
 	
 	//initialize legalMoves
 	{
+		numPermits = 1;
 		//for each piece type
 		for(int i = 0; i < N_PIECES; i++) {
 			//figure number of legal moves
@@ -623,6 +713,7 @@ class myState extends State implements Comparable<myState> {
 				for(int k = 0; k < COLS+1-pWidth[i][j];k++) {
 					legalMoves[i][n][ORIENT] = j;
 					legalMoves[i][n][SLOT] = k;
+					--numPermits;
 					n++;
 				}
 			}
@@ -678,23 +769,31 @@ class myState extends State implements Comparable<myState> {
 		return turn;
 	}
 	
-	public int getPreviousMove() {
-		return previousMove;
+	public int getNextMove() {
+		return nextMove;
 	}
 	
-	public int getScore() {
+	public double getScore() {
 		return score;
 	}
 	
+	public void setNextPiece(int np ) {
+		nextPiece = np;
+	}
+	
+	public void setScore(double sc) {
+		score = sc;
+	}
 	
 	//constructor
 	public myState(State s) {
 		copyState(s);
 	}
 	
-	public myState(State s, int prevMove, int points) {
+	public myState(State s, int newPiece, int newMove, double points) {
 		copyState(s);
-		previousMove = prevMove;
+		nextPiece = newPiece;
+		nextMove = newMove;
 		score = points;
 	}
 	
@@ -720,6 +819,7 @@ class myState extends State implements Comparable<myState> {
 		return rv;
 	}
 	private void copyState(State s) {
+		label = s.label;
 		nextPiece = s.getNextPiece();
 		top = copy1Array(s.getTop());
 		field = copy2Array(s.getField());
@@ -877,6 +977,12 @@ class myState extends State implements Comparable<myState> {
 	
 	@Override
 	public int compareTo(myState aMyState) {
-		return score - aMyState.getScore();
+		double result = score - aMyState.getScore();
+		if (result < 0) {
+			return -1;
+		} else if (result > 0) {
+			return 1;
+		} else
+			return 0;
 	}
 }
