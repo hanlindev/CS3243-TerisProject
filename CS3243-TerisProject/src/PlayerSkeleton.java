@@ -1,4 +1,6 @@
 import java.awt.Color;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -474,9 +476,52 @@ public class PlayerSkeleton {
 
 		return R + V;
 	}
+	
+	private double utilityFunctionV2(myState s) {
+		// meta_parameters
+		double meta_a = -100;
+		double meta_k = 4.384;
+		double meta_A = 1.16;
+		double meta_B = 17.72;
+		double meta_epsilon = 0.344;
+		int[] top = s.getTop();
+		int[][] field = s.getField();
+		int topMax = getMax(s.getTop());
+		//dependency matrix
+		boolean [][] d = new boolean[State.ROWS-1][State.ROWS-1];
+		d = dependency(field,top,topMax);
+		// cost c
+		double[] c = new double[topMax];
+		// compute c
+		for (int i = topMax - 1; i >= 0; i--) {
+			c[i] = meta_B * getHoleNum(field, top) + getGapCost(field, top, i) + getHoleCost(field,top,i,d[i]);
+			for(int j=i+1;j<topMax;j++){
+				if(d[i][j]);
+					c[i]+=c[j]+meta_A;
+			}
+		}
+
+		// cost function R+V
+		double R;
+		double V = 0.0;
+
+		// compute V
+		for (int i = 0; i < topMax; i++) {
+			V += dampening_f(c[i], meta_k);
+		}
+		V += multiWellPenalty(field,top);
+
+		// compute R
+		if (s.hasLost())
+			R = 10000000;
+		else
+			R = meta_a * (s.getJustCleared());
+
+		return R + V;
+	}
 
 	// implement this function to have a working system
-	public int pickMove(State s, int[][] legalMoves) {
+	public int pickMoveLookAhead(State s, int[][] legalMoves) {
 		int minId = 0;
 		double temp;
 		double cost = Double.MAX_VALUE;
@@ -491,26 +536,48 @@ public class PlayerSkeleton {
 
 		}
 		*/
-		
+		//System.out.println("----------------------------------------------------");//for debugging
+		myState ms = new myState(s);
 		for (int i = 0; i < legalMoves.length; ++i) {
 			// Create an instance of the current game
 			// board to simulate
-			myState ms = new myState(s);
+			ms.reset();
 			// Make the move on the virtual game board
+			//System.out.println("Next Piece: " + ms.getNextPiece() + " Next Move: " + i);//for debugging
 			ms.makeMove(i);
 			// A two step look ahead
 			if (!ms.hasLost()) {
-				temp = lookAhead(ms, 2);
+				temp = lookAhead(ms, 1);
 				if (temp < cost) {
 					cost = temp;
 					minId = i;
 				}
 			}
+			//System.out.println("WTF4 " + ms.getNextPiece());//for debugging
+			ms.undo();
+			//System.out.println("WTF5 " + ms.getNextPiece());//for debugging
 		}
-		System.out.println("Cost: " + cost);
+		//System.out.println("Cost: " + cost);//for debugging
 		return minId;
 	}
 	
+	public int pickMove(State s, int[][] legalMoves) {
+		int minId = 0;
+		double temp;
+		double cost = Double.MAX_VALUE;
+		myState ms = new myState(s);
+		// choose the one with smallest cost
+		for (int i = 0; i < legalMoves.length; i++) {
+			ms.makeMove(i);
+			temp = utilityFunctionV2(ms);
+			if (temp < cost) {
+				cost = temp;
+				minId = i;
+			}
+			ms.undo();
+		}
+		return minId;
+	}
 	/**
 	 * lookAhead
 	 * @param s the current state 
@@ -520,7 +587,7 @@ public class PlayerSkeleton {
 	 */
 	private double lookAhead(myState s, int step) {
 		if (step > 0) {
-			PriorityQueue<myState> pq = new PriorityQueue<myState>();
+			PriorityQueue<PMSTriplet> pq = new PriorityQueue<PMSTriplet>();
 			for (int i = 0; i < myState.N_PIECES; ++i) {
 				// Pick one piece and set it as the next piece
 				s.setNextPiece(i);
@@ -528,9 +595,10 @@ public class PlayerSkeleton {
 				int[][] legalMoves = s.legalMoves();
 				// Iterate through the legal moves and push them into the pq
 				for (int j = 0; j < legalMoves.length; ++j) {
-					double score = utilityFunction(s, legalMoves[j]);
-					myState aNewState = new myState(s, i, j, score);
-					pq.offer(aNewState);
+					s.makeMove(j);
+					double score = utilityFunctionV2(s);
+					pq.offer(new PMSTriplet(i, j, score));
+					s.undo();
 				}
 			}
 			
@@ -538,9 +606,11 @@ public class PlayerSkeleton {
 			int numExpansion = 5;
 			// Choose the best 5 states to expand
 			for (int i = 0; i < numExpansion; ++i) {
-				myState aGoodState = pq.poll();
-				aGoodState.makeMove(aGoodState.getNextMove());
-				totalScore += lookAhead(aGoodState, step - 1);
+				PMSTriplet aGoodState = pq.poll();
+				s.setNextPiece(aGoodState.piece);
+				s.makeMove(aGoodState.move);
+				totalScore += lookAhead(s, step - 1);
+				s.undo();
 			}
 			
 			return totalScore / (double) numExpansion;
@@ -551,7 +621,11 @@ public class PlayerSkeleton {
 				s.setNextPiece(i);
 				int[][] legalMoves = s.legalMoves();
 				for (int j = 0; j < legalMoves.length; ++j) {
-					totalScore += utilityFunction(s, legalMoves[j]);
+					s.makeMove(j);
+					//System.out.println("WTF2 " + s.getNextPiece());//for debugging
+					totalScore += utilityFunctionV2(s);
+					s.undo();
+					//System.out.println("WTF3 " + s.getNextPiece());//for debugging
 					++numEvaluation;
 				}
 			}
@@ -559,42 +633,78 @@ public class PlayerSkeleton {
 		}
 	}
 
-	public static void main(String[] args) {
-		State s = new State();
-		myState ms = new myState(s);
-		new TFrame(ms);
-		PlayerSkeleton p = new PlayerSkeleton();
-		while (!ms.hasLost()) {
-			ms.makeMove(p.pickMove(ms, ms.legalMoves()));
-			ms.draw();
-			ms.drawNext(0, 0);
-			try {
-				Thread.sleep(3);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+	public static void main(String[] args) throws Exception {
+		int count = 50;
+		BufferedWriter bw = new BufferedWriter(new FileWriter("Comparison_LookAheadGood.txt"));
+		int lookGood = 0;
+		for (int i = 0; i < count; ++i) {
+			int normal = testNormal(i);
+			int look = testLookAhead(i);
+			bw.write(look - normal + "\n");
+			lookGood += look - normal;
+			System.out.println("Look good score: " + (look - normal));
 		}
-		System.out.println("You have completed " + ms.getRowsCleared()
-				+ " rows.");
-		/*
-		State s = new State();
-		new TFrame(s);
-		PlayerSkeleton p = new PlayerSkeleton();
-		while (!s.hasLost()) {
-			s.makeMove(p.pickMove(s, s.legalMoves()));
-			s.draw();
-			s.drawNext(0, 0);
-			try {
-				Thread.sleep(3);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-		System.out.println("You have completed " + s.getRowsCleared()
-				+ " rows.");
-				*/
+		bw.write("Average look good: " + lookGood / count);
+		bw.flush();
+		System.out.println("Average Look Good: " + lookGood / count);
 	}
-
+	
+	public static int testLookAhead(int no) throws Exception{
+		BufferedWriter bw = new BufferedWriter(new FileWriter("Player1LookAhead" + no + ".txt"));
+		int rounds = 50;
+		int score = 0;
+		for (int i = 0; i < rounds; ++i) {
+			State s = new State();
+			//new TFrame(s);
+			PlayerSkeleton p = new PlayerSkeleton();
+			while (!s.hasLost()) {
+				s.makeMove(p.pickMoveLookAhead(s, s.legalMoves()));
+				//s.draw();
+				//s.drawNext(0, 0);
+				try {
+					Thread.sleep(3);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			score += s.getRowsCleared();
+			bw.write(s.getRowsCleared() + "\n");
+			bw.flush();
+			System.out.println(s.getRowsCleared());
+		}
+		bw.write("Average score: " + score / rounds);
+		bw.flush();
+		System.out.println("Average Score: " + score / rounds);
+		return score / rounds;
+	}
+	
+	public static int testNormal(int no) throws Exception {
+		BufferedWriter bw = new BufferedWriter(new FileWriter("Player1NoLookAhead" + no + ".txt"));
+		int rounds = 10;
+		int score = 0;
+		for (int i = 0; i < rounds; ++i) {
+			State s = new State();
+			//new TFrame(s);
+			PlayerSkeleton p = new PlayerSkeleton();
+			while (!s.hasLost()) {
+				s.makeMove(p.pickMove(s, s.legalMoves()));
+				//s.draw();
+				//s.drawNext(0, 0);
+				try {
+					Thread.sleep(3);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			score += s.getRowsCleared();
+			bw.write(s.getRowsCleared() + "\n");
+			System.out.println(s.getRowsCleared());
+		}
+		bw.write("Average score: " + score / rounds);
+		bw.flush();
+		System.out.println("Average Score: " + score / rounds);
+		return score / rounds;
+	}
 }
 
 /**
@@ -604,22 +714,6 @@ public class PlayerSkeleton {
  * and to hold the action that leads to this state
  */
 class myState extends State implements Comparable<myState> {
-	private class Triplet {
-		public int x, y, turn;
-		public Triplet(int x, int y, int turn) {
-			this.x = x;
-			this.y = y;
-			this.turn = turn;
-		}
-	}
-	
-	private class Pair {
-		public int x, height;
-		public Pair(int x, int height) {
-			this.x = x;
-			this.height = height;
-		}
-	}
 	// Previous move that led to this state
 	private int nextMove;
 	// The score of this state (utility)
@@ -629,6 +723,7 @@ class myState extends State implements Comparable<myState> {
 	// Records the rounds of changes
 	Stack<Stack<Triplet>> roundsOfChangesField;
 	Stack<Stack<Pair>> roundsOfChangesTop;
+	Stack<Triplet> roundsOfChangesTurn;
 	
 	public static final int COLS = 10;
 	public static final int ROWS = 21;
@@ -817,6 +912,7 @@ class myState extends State implements Comparable<myState> {
 	public void reset() {
 		roundsOfChangesField = new Stack<Stack<Triplet>>();
 		roundsOfChangesTop = new Stack<Stack<Pair>>();
+		roundsOfChangesTurn = new Stack<Triplet>();
 	}
 	
 	//constructor
@@ -864,8 +960,12 @@ class myState extends State implements Comparable<myState> {
 	private void copyState(State s) {
 		label = s.label;
 		nextPiece = s.getNextPiece();
+		/*
 		top = copy1Array(s.getTop());
 		field = copy2Array(s.getField());
+		*/
+		top = s.getTop();
+		field = s.getField();
 		lost = s.hasLost();
 		cleared = s.getRowsCleared();
 		turn = s.getTurnNumber();
@@ -886,6 +986,7 @@ class myState extends State implements Comparable<myState> {
 	
 	//make a move based on the move index - its order in the legalMoves list
 	public void makeMove(int move) {
+		//System.out.println("NextPiece: " + nextPiece + " Move: " + move);//for debugging
 		makeMove(legalMoves[nextPiece][move]);
 	}
 	
@@ -898,6 +999,7 @@ class myState extends State implements Comparable<myState> {
 	public boolean makeMove(int orient, int slot) {
 		Stack<Triplet> fieldChanges = new Stack<Triplet>();
 		Stack<Pair> topChanges = new Stack<Pair>();
+		Triplet turnInfo = new Triplet(turn, nextPiece, cleared);
 		turn++;
 		//height if the first column makes contact
 		int height = top[slot]-pBottom[nextPiece][orient][0];
@@ -908,7 +1010,11 @@ class myState extends State implements Comparable<myState> {
 		
 		//check if game ended
 		if(height+pHeight[nextPiece][orient] >= ROWS) {
+			//System.out.println("MIIIIIIIIIIIPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");//for debugging
 			lost = true;
+			roundsOfChangesField.push(fieldChanges);
+			roundsOfChangesTop.push(topChanges);
+			roundsOfChangesTurn.push(turnInfo);
 			return false;
 		}
 
@@ -968,6 +1074,7 @@ class myState extends State implements Comparable<myState> {
 		justCleared = rowsCleared;
 		roundsOfChangesField.push(fieldChanges);
 		roundsOfChangesTop.push(topChanges);
+		roundsOfChangesTurn.push(turnInfo);
 		return true;
 	}
 	
@@ -977,12 +1084,18 @@ class myState extends State implements Comparable<myState> {
 		if (!roundsOfChangesField.isEmpty()) {
 			Stack<Triplet> fieldChanges = roundsOfChangesField.pop();
 			Stack<Pair> topChanges = roundsOfChangesTop.pop();
+			Triplet turnInfo = roundsOfChangesTurn.pop();
 			while (!fieldChanges.isEmpty()) {
 				Triplet F = fieldChanges.pop();
-				Pair T = topChanges.pop();
 				field[F.x][F.y] = F.turn;
+			}
+			while (!topChanges.isEmpty()) {
+				Pair T = topChanges.pop();
 				top[T.x] = T.height;
 			}
+			turn = turnInfo.x;
+			nextPiece = turnInfo.y;
+			cleared = turnInfo.turn;
 			return true;
 		} else {
 			return false;
@@ -1052,6 +1165,50 @@ class myState extends State implements Comparable<myState> {
 		} else if (result > 0) {
 			return 1;
 		} else
+			return 0;
+	}
+}
+/*
+ * When used to record turns, x is turn, y is nextPiece, turn is rowsCleared
+ */
+class Triplet {
+	public int x, y, turn;
+	public Triplet(int x, int y, int turn) {
+		this.x = x;
+		this.y = y;
+		this.turn = turn;
+	}
+}
+
+
+class Pair {
+	public int x, height;
+	public Pair(int x, int height) {
+		this.x = x;
+		this.height = height;
+	}
+}
+
+/*
+ * PMSTriplet means piece-move-score triplet :P
+ */
+class PMSTriplet implements Comparable<PMSTriplet> {
+	public int piece, move;
+	public double score;
+	
+	public PMSTriplet(int p, int m, double s) {
+		piece = p;
+		move = m;
+		score = s;
+	}
+	
+	public int compareTo(PMSTriplet another) {
+		double diff = score - another.score;
+		if (diff < 0D) {
+			return -1;
+		} else if (diff > 0D) {
+			return 1;
+		} else 
 			return 0;
 	}
 }
