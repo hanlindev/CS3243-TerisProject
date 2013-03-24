@@ -651,7 +651,7 @@ public class PlayerSkeleton {
 	
 	public static int testLookAhead(int no) throws Exception{
 		BufferedWriter bw = new BufferedWriter(new FileWriter("Player1LookAhead" + no + ".txt"));
-		int rounds = 50;
+		int rounds = 5;
 		int score = 0;
 		for (int i = 0; i < rounds; ++i) {
 			State s = new State();
@@ -680,7 +680,7 @@ public class PlayerSkeleton {
 	
 	public static int testNormal(int no) throws Exception {
 		BufferedWriter bw = new BufferedWriter(new FileWriter("Player1NoLookAhead" + no + ".txt"));
-		int rounds = 10;
+		int rounds = 5;
 		int score = 0;
 		for (int i = 0; i < rounds; ++i) {
 			State s = new State();
