@@ -477,7 +477,7 @@ public class PlayerSkeleton {
 		return R + V;
 	}
 	
-	private double utilityFunctionV2(myState s) {
+	private double utilityFunctionV2(myState1 s) {
 		// meta_parameters
 		double meta_a = -100;
 		double meta_k = 4.384;
@@ -536,14 +536,14 @@ public class PlayerSkeleton {
 
 		}
 		*/
-		//System.out.println("----------------------------------------------------");//for debugging
-		myState ms = new myState(s);
+		System.out.println("----------------------------------------------------");//for debugging
+		myState1 ms = new myState1(s);
 		for (int i = 0; i < legalMoves.length; ++i) {
 			// Create an instance of the current game
 			// board to simulate
 			ms.reset();
 			// Make the move on the virtual game board
-			//System.out.println("Next Piece: " + ms.getNextPiece() + " Next Move: " + i);//for debugging
+			System.out.println("Next Piece: " + ms.getNextPiece() + " Next Move: " + i);//for debugging
 			ms.makeMove(i);
 			// A two step look ahead
 			if (!ms.hasLost()) {
@@ -553,9 +553,9 @@ public class PlayerSkeleton {
 					minId = i;
 				}
 			}
-			//System.out.println("WTF4 " + ms.getNextPiece());//for debugging
+			System.out.println("WTF4 " + ms.getNextPiece());//for debugging
 			ms.undo();
-			//System.out.println("WTF5 " + ms.getNextPiece());//for debugging
+			System.out.println("WTF5 " + ms.getNextPiece());//for debugging
 		}
 		//System.out.println("Cost: " + cost);//for debugging
 		return minId;
@@ -565,7 +565,7 @@ public class PlayerSkeleton {
 		int minId = 0;
 		double temp;
 		double cost = Double.MAX_VALUE;
-		myState ms = new myState(s);
+		myState1 ms = new myState1(s);
 		// choose the one with smallest cost
 		for (int i = 0; i < legalMoves.length; i++) {
 			ms.makeMove(i);
@@ -585,10 +585,10 @@ public class PlayerSkeleton {
 	 *        if we want to look ahead 1 step, it should be 1.
 	 * @return the best utility we can achieve from this state
 	 */
-	private double lookAhead(myState s, int step) {
+	private double lookAhead(myState1 s, int step) {
 		if (step > 0) {
 			PriorityQueue<PMSTriplet> pq = new PriorityQueue<PMSTriplet>();
-			for (int i = 0; i < myState.N_PIECES; ++i) {
+			for (int i = 0; i < myState1.N_PIECES; ++i) {
 				// Pick one piece and set it as the next piece
 				s.setNextPiece(i);
 				// Get the legal moves
@@ -617,15 +617,15 @@ public class PlayerSkeleton {
 		} else {
 			double totalScore = 0D;
 			int numEvaluation = 0;
-			for (int i = 0; i < myState.N_PIECES; ++i) {
+			for (int i = 0; i < myState1.N_PIECES; ++i) {
 				s.setNextPiece(i);
 				int[][] legalMoves = s.legalMoves();
 				for (int j = 0; j < legalMoves.length; ++j) {
 					s.makeMove(j);
-					//System.out.println("WTF2 " + s.getNextPiece());//for debugging
+					System.out.println("WTF2 " + s.getNextPiece());//for debugging
 					totalScore += utilityFunctionV2(s);
 					s.undo();
-					//System.out.println("WTF3 " + s.getNextPiece());//for debugging
+					System.out.println("WTF3 " + s.getNextPiece());//for debugging
 					++numEvaluation;
 				}
 			}
@@ -638,11 +638,11 @@ public class PlayerSkeleton {
 		BufferedWriter bw = new BufferedWriter(new FileWriter("Comparison_LookAheadGood.txt"));
 		int lookGood = 0;
 		for (int i = 0; i < count; ++i) {
-			int normal = testNormal(i);
+			//int normal = testNormal(i);
 			int look = testLookAhead(i);
-			bw.write(look - normal + "\n");
-			lookGood += look - normal;
-			System.out.println("Look good score: " + (look - normal));
+			//bw.write(look - normal + "\n");
+			//lookGood += look - normal;
+			//System.out.println("Look good score: " + (look - normal));
 		}
 		bw.write("Average look good: " + lookGood / count);
 		bw.flush();
@@ -655,12 +655,12 @@ public class PlayerSkeleton {
 		int score = 0;
 		for (int i = 0; i < rounds; ++i) {
 			State s = new State();
-			//new TFrame(s);
+			new TFrame(s);
 			PlayerSkeleton p = new PlayerSkeleton();
 			while (!s.hasLost()) {
 				s.makeMove(p.pickMoveLookAhead(s, s.legalMoves()));
-				//s.draw();
-				//s.drawNext(0, 0);
+				s.draw();
+				s.drawNext(0, 0);
 				try {
 					Thread.sleep(3);
 				} catch (InterruptedException e) {
@@ -713,7 +713,7 @@ public class PlayerSkeleton {
  * (spiritually) extends State to make it comparable (for look ahead)
  * and to hold the action that leads to this state
  */
-class myState extends State implements Comparable<myState> {
+class myState extends State{
 	// Previous move that led to this state
 	private int nextMove;
 	// The score of this state (utility)
@@ -1010,7 +1010,7 @@ class myState extends State implements Comparable<myState> {
 		
 		//check if game ended
 		if(height+pHeight[nextPiece][orient] >= ROWS) {
-			//System.out.println("MIIIIIIIIIIIPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");//for debugging
+			System.out.println("MIIIIIIIIIIIPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");//for debugging
 			lost = true;
 			roundsOfChangesField.push(fieldChanges);
 			roundsOfChangesTop.push(topChanges);
@@ -1154,18 +1154,6 @@ class myState extends State implements Comparable<myState> {
 		label.filledRectangleLL(0, ROWS+.9, COLS, 4.2, TLabel.DEFAULT_CLEAR_COLOR);
 		label.line(0, 0, 0, ROWS+5);
 		label.line(COLS, 0, COLS, ROWS+5);
-	}
-	
-	@Override
-	public int compareTo(myState aMyState) {
-		double result = aMyState.getScore() - score;
-		//double result = aMyState.getScore() - score;
-		if (result < 0) {
-			return -1;
-		} else if (result > 0) {
-			return 1;
-		} else
-			return 0;
 	}
 }
 /*
