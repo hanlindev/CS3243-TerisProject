@@ -1,7 +1,7 @@
 import java.awt.Color;
 import java.util.Stack;
 
-public class myState1 extends State {
+public class MyState extends State {
 	// Records the rounds of changes. They can be used to
 	// undo changes
 	Stack<Stack<Triplet>> roundsOfChangesField;
@@ -11,6 +11,7 @@ public class myState1 extends State {
 	private int justCleared = 0;
 	private int turn = 0;
 	private int cleared = 0;
+	private int landingHeight = 0;// Used in Xiangqun's utilityFunction not working atm
 	
 	//each square in the grid - int means empty - other values mean the turn it was placed
 	private int[][] field = new int[ROWS][COLS];
@@ -28,6 +29,11 @@ public class myState1 extends State {
 		pBottom = super.getpBottom();
 		pTop = super.getpTop();
 	}
+
+	public int getNextPiece() {
+		return nextPiece;
+	}
+	
 	public void setNextPiece(int next) {
 		nextPiece = next;
 	}
@@ -42,12 +48,35 @@ public class myState1 extends State {
 		roundsOfChangesTop = new Stack<Stack<Pair>>();
 		roundsOfChangesTurn = new Stack<Triplet>();
 	}
-		
-	public myState1(State s) {
-		turn = s.getTurnNumber();
-		cleared = s.getRowsCleared();
-		field = s.getField();
+	
+	public int[][] getField() {
+		return field;
+	}
+	
+	public int[] getTop() {
+		return top;
+	}
+	
+	public int getRowsCleared() {
+		return cleared;
+	}
+	
+	public int getTurnNumber() {
+		return turn;
+	}
+	
+	public int getLandingHeight() {
+		return landingHeight;
+	}
+	
+	public MyState(State s) {
+		nextPiece = s.getNextPiece();
+		label = s.label;
 		top = s.getTop();
+		field = s.getField();
+		lost = s.hasLost();
+		cleared = s.getRowsCleared();
+		turn = s.getTurnNumber();
 		reset();
 	}
 	//make a move based on the move index - its order in the legalMoves list
@@ -76,7 +105,6 @@ public class myState1 extends State {
 		//check if game ended
 		if(height+pHeight[nextPiece][orient] >= ROWS) {
 			lost = true;
-			System.out.println("MIIIIIIIIIIIPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");//for debugging
 			roundsOfChangesField.push(fieldChanges);
 			roundsOfChangesTop.push(topChanges);
 			roundsOfChangesTurn.push(turnInfo);
@@ -140,6 +168,8 @@ public class myState1 extends State {
 		roundsOfChangesField.push(fieldChanges);
 		roundsOfChangesTop.push(topChanges);
 		roundsOfChangesTurn.push(turnInfo);
+		
+		landingHeight = height + ((pHeight[nextPiece][orient] -1) / 2); 
 		return true;
 	}
 	
@@ -165,5 +195,115 @@ public class myState1 extends State {
 		} else {
 			return false;
 		}
+	}
+	
+	public void draw() {
+		label.clear();
+		label.setPenRadius();
+		//outline board
+		label.line(0, 0, 0, ROWS+5);
+		label.line(COLS, 0, COLS, ROWS+5);
+		label.line(0, 0, COLS, 0);
+		label.line(0, ROWS-1, COLS, ROWS-1);
+		
+		//show bricks
+				
+		for(int c = 0; c < COLS; c++) {
+			for(int r = 0; r < top[c]; r++) {
+				if(field[r][c] != 0) {
+					drawBrick(c,r);
+				}
+			}
+		}
+		
+		for(int i = 0; i < COLS; i++) {
+			label.setPenColor(Color.red);
+			label.line(i, top[i], i+1, top[i]);
+			label.setPenColor();
+		}
+		
+		label.show();
+		
+		
+	}
+	
+	public static final Color brickCol = Color.gray; 
+	
+	private void drawBrick(int c, int r) {
+		label.filledRectangleLL(c, r, 1, 1, brickCol);
+		label.rectangleLL(c, r, 1, 1);
+	}
+	
+	public void drawNext(int slot, int orient) {
+		for(int i = 0; i < pWidth[nextPiece][orient]; i++) {
+			for(int j = pBottom[nextPiece][orient][i]; j <pTop[nextPiece][orient][i]; j++) {
+				drawBrick(i+slot, j+ROWS+1);
+			}
+		}
+		label.show();
+	}
+	
+	//visualization
+	//clears the area where the next piece is shown (top)
+	public void clearNext() {
+		label.filledRectangleLL(0, ROWS+.9, COLS, 4.2, TLabel.DEFAULT_CLEAR_COLOR);
+		label.line(0, 0, 0, ROWS+5);
+		label.line(COLS, 0, COLS, ROWS+5);
+	}
+}
+
+/*
+ * When used to record turns, x is turn, y is nextPiece, turn is rowsCleared
+ */
+class Triplet {
+	public int x, y, turn;
+	public Triplet(int x, int y, int turn) {
+		this.x = x;
+		this.y = y;
+		this.turn = turn;
+	}
+	
+	public String toString() {
+		return "(" + this.x + "," + this.y + "," + this.turn + ")";
+	}
+}
+
+
+class Pair {
+	public int x, height;
+	public Pair(int x, int height) {
+		this.x = x;
+		this.height = height;
+	}
+	public String toString() {
+		return "(" + this.x + "," + this.height + ")";
+	}
+}
+
+/*
+ * PMSTriplet means piece-move-score triplet :P
+ */
+class PMSTriplet implements Comparable<PMSTriplet> {
+	public int piece, move;
+	public double score;
+	
+	public PMSTriplet(int p, int m, double s) {
+		piece = p;
+		move = m;
+		score = s;
+	}
+	
+	public int compareTo(PMSTriplet another) {
+		double diff = score - another.score;
+		if (diff < 0D) {
+			return -1;
+		} else if (diff > 0D) {
+			return 1;
+		} else 
+			return 0;
+	}
+	
+	public String toString() {
+		return "(" + this.piece + "," + this.move + "," + this.score + ")";
 	}
 }

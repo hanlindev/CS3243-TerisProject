@@ -477,7 +477,7 @@ public class PlayerSkeleton {
 		return R + V;
 	}
 	
-	private double utilityFunctionV2(myState1 s) {
+	private double utilityFunctionV2(MyState s) {
 		// meta_parameters
 		double meta_a = -100;
 		double meta_k = 4.384;
@@ -526,26 +526,18 @@ public class PlayerSkeleton {
 		double temp;
 		double cost = Double.MAX_VALUE;
 		// choose the one with smallest cost
-		/*
-		for (int i = 0; i < legalMoves.length; i++) {
-			temp = utilityFunction(s, legalMoves[i]);
-			if (temp < cost) {
-				cost = temp;
-				minId = i;
-			}
-
-		}
-		*/
-		System.out.println("----------------------------------------------------");//for debugging
-		myState1 ms = new myState1(s);
+	
+		MyState ms = new MyState(s);
 		for (int i = 0; i < legalMoves.length; ++i) {
 			// Create an instance of the current game
 			// board to simulate
 			ms.reset();
 			// Make the move on the virtual game board
-			System.out.println("Next Piece: " + ms.getNextPiece() + " Next Move: " + i);//for debugging
+			//System.out.println("Next Piece: " + ms.getNextPiece() + " Next Move: " + i);//for debugging
+			//ms.draw();//for debugging
 			ms.makeMove(i);
-			// A two step look ahead
+			//ms.draw();//for debugging
+			// A 1 step look ahead
 			if (!ms.hasLost()) {
 				temp = lookAhead(ms, 1);
 				if (temp < cost) {
@@ -553,9 +545,11 @@ public class PlayerSkeleton {
 					minId = i;
 				}
 			}
-			System.out.println("WTF4 " + ms.getNextPiece());//for debugging
+			//System.out.println("WTF4 " + ms.getNextPiece());//for debugging
+			//ms.draw();//for debugging
 			ms.undo();
-			System.out.println("WTF5 " + ms.getNextPiece());//for debugging
+			//ms.draw();//for debugging
+			//System.out.println("WTF5 " + ms.getNextPiece());//for debugging
 		}
 		//System.out.println("Cost: " + cost);//for debugging
 		return minId;
@@ -565,16 +559,18 @@ public class PlayerSkeleton {
 		int minId = 0;
 		double temp;
 		double cost = Double.MAX_VALUE;
-		myState1 ms = new myState1(s);
+		//myState1 ms = new myState1(s);
+		State ms = s;
 		// choose the one with smallest cost
 		for (int i = 0; i < legalMoves.length; i++) {
-			ms.makeMove(i);
-			temp = utilityFunctionV2(ms);
+			//ms.makeMove(i);
+			temp = utilityFunction(ms, legalMoves[i]);
+			//temp = utilityFunctionV2(ms);
 			if (temp < cost) {
 				cost = temp;
 				minId = i;
 			}
-			ms.undo();
+			//ms.undo();
 		}
 		return minId;
 	}
@@ -585,10 +581,10 @@ public class PlayerSkeleton {
 	 *        if we want to look ahead 1 step, it should be 1.
 	 * @return the best utility we can achieve from this state
 	 */
-	private double lookAhead(myState1 s, int step) {
+	private double lookAhead(MyState s, int step) {
 		if (step > 0) {
 			PriorityQueue<PMSTriplet> pq = new PriorityQueue<PMSTriplet>();
-			for (int i = 0; i < myState1.N_PIECES; ++i) {
+			for (int i = 0; i < MyState.N_PIECES; ++i) {
 				// Pick one piece and set it as the next piece
 				s.setNextPiece(i);
 				// Get the legal moves
@@ -617,15 +613,15 @@ public class PlayerSkeleton {
 		} else {
 			double totalScore = 0D;
 			int numEvaluation = 0;
-			for (int i = 0; i < myState1.N_PIECES; ++i) {
+			for (int i = 0; i < MyState.N_PIECES; ++i) {
 				s.setNextPiece(i);
 				int[][] legalMoves = s.legalMoves();
 				for (int j = 0; j < legalMoves.length; ++j) {
 					s.makeMove(j);
-					System.out.println("WTF2 " + s.getNextPiece());//for debugging
+					//System.out.println("WTF2 " + s.getNextPiece());//for debugging
 					totalScore += utilityFunctionV2(s);
 					s.undo();
-					System.out.println("WTF3 " + s.getNextPiece());//for debugging
+					//System.out.println("WTF3 " + s.getNextPiece());//for debugging
 					++numEvaluation;
 				}
 			}
@@ -634,18 +630,19 @@ public class PlayerSkeleton {
 	}
 
 	public static void main(String[] args) throws Exception {
-		int count = 50;
+		int count = 5;
 		BufferedWriter bw = new BufferedWriter(new FileWriter("Comparison_LookAheadGood.txt"));
 		int lookGood = 0;
 		for (int i = 0; i < count; ++i) {
-			//int normal = testNormal(i);
+			int normal = testNormal(i);
 			int look = testLookAhead(i);
-			//bw.write(look - normal + "\n");
-			//lookGood += look - normal;
-			//System.out.println("Look good score: " + (look - normal));
+			bw.write(look - normal + "\n");
+			lookGood += look - normal;
+			System.out.println("Look good score: " + (look - normal));
 		}
 		bw.write("Average look good: " + lookGood / count);
 		bw.flush();
+		bw.close();
 		System.out.println("Average Look Good: " + lookGood / count);
 	}
 	
@@ -655,12 +652,12 @@ public class PlayerSkeleton {
 		int score = 0;
 		for (int i = 0; i < rounds; ++i) {
 			State s = new State();
-			new TFrame(s);
+			//new TFrame(s);
 			PlayerSkeleton p = new PlayerSkeleton();
 			while (!s.hasLost()) {
 				s.makeMove(p.pickMoveLookAhead(s, s.legalMoves()));
-				s.draw();
-				s.drawNext(0, 0);
+				//s.draw();
+				//s.drawNext(0, 0);
 				try {
 					Thread.sleep(3);
 				} catch (InterruptedException e) {
@@ -672,9 +669,10 @@ public class PlayerSkeleton {
 			bw.flush();
 			System.out.println(s.getRowsCleared());
 		}
-		bw.write("Average score: " + score / rounds);
+		bw.write("Average score: " + score / rounds + "\n");
 		bw.flush();
 		System.out.println("Average Score: " + score / rounds);
+		bw.close();
 		return score / rounds;
 	}
 	
@@ -700,503 +698,12 @@ public class PlayerSkeleton {
 			bw.write(s.getRowsCleared() + "\n");
 			System.out.println(s.getRowsCleared());
 		}
-		bw.write("Average score: " + score / rounds);
+		bw.write("Average score: " + score / rounds + "\n");
 		bw.flush();
+		bw.close();
 		System.out.println("Average Score: " + score / rounds);
 		return score / rounds;
 	}
 }
 
-/**
- * myState
- * @author DIdiHL
- * (spiritually) extends State to make it comparable (for look ahead)
- * and to hold the action that leads to this state
- */
-class myState extends State{
-	// Previous move that led to this state
-	private int nextMove;
-	// The score of this state (utility)
-	private double score;
-	// number of negative permits assigned to semaphore.
-	public static int numPermits;
-	// Records the rounds of changes
-	Stack<Stack<Triplet>> roundsOfChangesField;
-	Stack<Stack<Pair>> roundsOfChangesTop;
-	Stack<Triplet> roundsOfChangesTurn;
-	
-	public static final int COLS = 10;
-	public static final int ROWS = 21;
-	public static final int N_PIECES = 7;
 
-	
-
-	public boolean lost = false;
-	
-	
-	
-
-	
-	//public TLabel label;
-	
-	//current turn
-	private int turn = 0;
-	private int cleared = 0;
-	private int justCleared = 0;
-	
-	//each square in the grid - int means empty - other values mean the turn it was placed
-	private int[][] field = new int[ROWS][COLS];
-	//top row+1 of each column
-	//0 means empty
-	private int[] top = new int[COLS];
-	
-	
-	//number of next piece
-	protected int nextPiece;
-	
-	
-	
-	//all legal moves - first index is piece type - then a list of 2-length arrays
-	protected static int[][][] legalMoves = new int[N_PIECES][][];
-	
-	//indices for legalMoves
-	public static final int ORIENT = 0;
-	public static final int SLOT = 1;
-	
-	//possible orientations for a given piece type
-	protected static int[] pOrients = {1,2,4,4,4,2,2};
-	
-	//These attributes are kept here coz I don't want to modify so much
-	//code in the move method
-	//the next several arrays define the piece vocabulary in detail
-	//width of the pieces [piece ID][orientation]
-	protected static int[][] pWidth = {
-			{2},
-			{1,4},
-			{2,3,2,3},
-			{2,3,2,3},
-			{2,3,2,3},
-			{3,2},
-			{3,2}
-	};
-	//height of the pieces [piece ID][orientation]
-	private static int[][] pHeight = {
-			{2},
-			{4,1},
-			{3,2,3,2},
-			{3,2,3,2},
-			{3,2,3,2},
-			{2,3},
-			{2,3}
-	};
-	private static int[][][] pBottom = {
-		{{0,0}},
-		{{0},{0,0,0,0}},
-		{{0,0},{0,1,1},{2,0},{0,0,0}},
-		{{0,0},{0,0,0},{0,2},{1,1,0}},
-		{{0,1},{1,0,1},{1,0},{0,0,0}},
-		{{0,0,1},{1,0}},
-		{{1,0,0},{0,1}}
-	};
-	private static int[][][] pTop = {
-		{{2,2}},
-		{{4},{1,1,1,1}},
-		{{3,1},{2,2,2},{3,3},{1,1,2}},
-		{{1,3},{2,1,1},{3,3},{2,2,2}},
-		{{3,2},{2,2,2},{2,3},{1,2,1}},
-		{{1,2,2},{3,2}},
-		{{2,2,1},{2,3}}
-	};
-	
-	//initialize legalMoves
-	{
-		numPermits = 1;
-		//for each piece type
-		for(int i = 0; i < N_PIECES; i++) {
-			//figure number of legal moves
-			int n = 0;
-			for(int j = 0; j < pOrients[i]; j++) {
-				//number of locations in this orientation
-				n += COLS+1-pWidth[i][j];
-			}
-			//allocate space
-			legalMoves[i] = new int[n][2];
-			//for each orientation
-			n = 0;
-			for(int j = 0; j < pOrients[i]; j++) {
-				//for each slot
-				for(int k = 0; k < COLS+1-pWidth[i][j];k++) {
-					legalMoves[i][n][ORIENT] = j;
-					legalMoves[i][n][SLOT] = k;
-					--numPermits;
-					n++;
-				}
-			}
-		}
-	
-	}
-	
-	
-	
-	
-	public int[][] getField() {
-		return field;
-	}
-
-	public int[] getTop() {
-		return top;
-	}
-
-    public static int[] getpOrients() {
-        return pOrients;
-    }
-    
-    public static int[][] getpWidth() {
-        return pWidth;
-    }
-
-    public static int[][] getpHeight() {
-        return pHeight;
-    }
-
-    public static int[][][] getpBottom() {
-        return pBottom;
-    }
-
-    public static int[][][] getpTop() {
-        return pTop;
-    }
-    
-    public static int[][] getLegalMoves(int i) {
-    	return legalMoves[i];
-    }
-
-
-	public int getNextPiece() {
-		return nextPiece;
-	}
-	
-	public boolean hasLost() {
-		return lost;
-	}
-	
-	public int getRowsCleared() {
-		return cleared;
-	}
-	
-	public int getTurnNumber() {
-		return turn;
-	}
-	
-	public int getNextMove() {
-		return nextMove;
-	}
-	
-	public double getScore() {
-		return score;
-	}
-	
-	public int getJustCleared() {
-		return justCleared;
-	}
-	
-	public void setNextPiece(int np ) {
-		nextPiece = np;
-	}
-	
-	public void setScore(double sc) {
-		score = sc;
-	}
-	
-	// Reset rounds of changes
-	public void reset() {
-		roundsOfChangesField = new Stack<Stack<Triplet>>();
-		roundsOfChangesTop = new Stack<Stack<Pair>>();
-		roundsOfChangesTurn = new Stack<Triplet>();
-	}
-	
-	//constructor
-	public myState(State s) {
-		copyState(s);
-		reset();
-	}
-	
-	public myState(State s, int newPiece, int newMove) {
-		copyState(s);
-		nextPiece = newPiece;
-		nextMove = newMove;
-		reset();
-	}
-	
-	public myState(State s, int newPiece, int newMove, double points) {
-		copyState(s);
-		nextPiece = newPiece;
-		nextMove = newMove;
-		score = points;
-		reset();
-	}
-	
-	private int[] copy1Array(int[] arr) {
-		int[] rv = new int[arr.length];
-		System.arraycopy(arr, 0, rv, 0, arr.length);
-		return rv;
-	}
-	
-	private int[][] copy2Array(int[][] arr) {
-		int[][] rv = new int[arr.length][];
-		for (int i = 0; i < rv.length; ++i) {
-			rv[i] = copy1Array(arr[i]);
-		}
-		return rv;
-	}
-	
-	private int[][][] copy3Array(int[][][] arr) {
-		int[][][] rv = new int[arr.length][][];
-		for (int i = 0; i < rv.length; ++i) {
-			rv[i] = copy2Array(arr[i]);
-		}
-		return rv;
-	}
-	private void copyState(State s) {
-		label = s.label;
-		nextPiece = s.getNextPiece();
-		/*
-		top = copy1Array(s.getTop());
-		field = copy2Array(s.getField());
-		*/
-		top = s.getTop();
-		field = s.getField();
-		lost = s.hasLost();
-		cleared = s.getRowsCleared();
-		turn = s.getTurnNumber();
-	}
-
-	
-	//random integer, returns 0-6
-	private int randomPiece() {
-		return (int)(Math.random()*N_PIECES);
-	}
-
-
-	
-	//gives legal moves for 
-	public int[][] legalMoves() {
-		return legalMoves[nextPiece];
-	}
-	
-	//make a move based on the move index - its order in the legalMoves list
-	public void makeMove(int move) {
-		//System.out.println("NextPiece: " + nextPiece + " Move: " + move);//for debugging
-		makeMove(legalMoves[nextPiece][move]);
-	}
-	
-	//make a move based on an array of orient and slot
-	public void makeMove(int[] move) {
-		makeMove(move[ORIENT],move[SLOT]);
-	}
-	
-	//returns false if you lose - true otherwise
-	public boolean makeMove(int orient, int slot) {
-		Stack<Triplet> fieldChanges = new Stack<Triplet>();
-		Stack<Pair> topChanges = new Stack<Pair>();
-		Triplet turnInfo = new Triplet(turn, nextPiece, cleared);
-		turn++;
-		//height if the first column makes contact
-		int height = top[slot]-pBottom[nextPiece][orient][0];
-		//for each column beyond the first in the piece
-		for(int c = 1; c < pWidth[nextPiece][orient];c++) {
-			height = Math.max(height,top[slot+c]-pBottom[nextPiece][orient][c]);
-		}
-		
-		//check if game ended
-		if(height+pHeight[nextPiece][orient] >= ROWS) {
-			System.out.println("MIIIIIIIIIIIPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");//for debugging
-			lost = true;
-			roundsOfChangesField.push(fieldChanges);
-			roundsOfChangesTop.push(topChanges);
-			roundsOfChangesTurn.push(turnInfo);
-			return false;
-		}
-
-		
-		//for each column in the piece - fill in the appropriate blocks
-		for(int i = 0; i < pWidth[nextPiece][orient]; i++) {
-			
-			//from bottom to top of brick
-			for(int h = height+pBottom[nextPiece][orient][i]; h < height+pTop[nextPiece][orient][i]; h++) {
-				fieldChanges.push(new Triplet(h, i+slot, field[h][i+slot]));
-				field[h][i+slot] = turn;
-			}
-		}
-		
-		//adjust top
-		for(int c = 0; c < pWidth[nextPiece][orient]; c++) {
-			topChanges.push(new Pair(slot+c, top[slot+c]));
-			top[slot+c]=height+pTop[nextPiece][orient][c];
-		}
-		
-		int rowsCleared = 0;
-		
-		//check for full rows - starting at the top
-		for(int r = height+pHeight[nextPiece][orient]-1; r >= height; r--) {
-			//check all columns in the row
-			boolean full = true;
-			for(int c = 0; c < COLS; c++) {
-				if(field[r][c] == 0) {
-					full = false;
-					break;
-				}
-			}
-			//if the row was full - remove it and slide above stuff down
-			if(full) {
-				rowsCleared++;
-				cleared++;
-				//for each column
-				for(int c = 0; c < COLS; c++) {
-
-					//slide down all bricks
-					for(int i = r; i < top[c]; i++) {
-						fieldChanges.push(new Triplet(i, c, field[i][c]));
-						fieldChanges.push(new Triplet(i+1, c, field[i+1][c]));
-						field[i][c] = field[i+1][c];
-					}
-					//lower the top
-					topChanges.push(new Pair(c, top[c]));
-					top[c]--;
-					while(top[c]>=1 && field[top[c]-1][c]==0)	top[c]--;
-				}
-			}
-		}
-	
-
-		//pick a new piece
-		//nextPiece = randomPiece();
-		justCleared = rowsCleared;
-		roundsOfChangesField.push(fieldChanges);
-		roundsOfChangesTop.push(topChanges);
-		roundsOfChangesTurn.push(turnInfo);
-		return true;
-	}
-	
-	// Undo the last round of change taken from the stack if there is nothin
-	// in the stack, return false. Otherwise return true;
-	public boolean undo() {
-		if (!roundsOfChangesField.isEmpty()) {
-			Stack<Triplet> fieldChanges = roundsOfChangesField.pop();
-			Stack<Pair> topChanges = roundsOfChangesTop.pop();
-			Triplet turnInfo = roundsOfChangesTurn.pop();
-			while (!fieldChanges.isEmpty()) {
-				Triplet F = fieldChanges.pop();
-				field[F.x][F.y] = F.turn;
-			}
-			while (!topChanges.isEmpty()) {
-				Pair T = topChanges.pop();
-				top[T.x] = T.height;
-			}
-			turn = turnInfo.x;
-			nextPiece = turnInfo.y;
-			cleared = turnInfo.turn;
-			return true;
-		} else {
-			return false;
-		}
-	}
-	
-	public void draw() {
-		label.clear();
-		label.setPenRadius();
-		//outline board
-		label.line(0, 0, 0, ROWS+5);
-		label.line(COLS, 0, COLS, ROWS+5);
-		label.line(0, 0, COLS, 0);
-		label.line(0, ROWS-1, COLS, ROWS-1);
-		
-		//show bricks
-				
-		for(int c = 0; c < COLS; c++) {
-			for(int r = 0; r < top[c]; r++) {
-				if(field[r][c] != 0) {
-					drawBrick(c,r);
-				}
-			}
-		}
-		
-		for(int i = 0; i < COLS; i++) {
-			label.setPenColor(Color.red);
-			label.line(i, top[i], i+1, top[i]);
-			label.setPenColor();
-		}
-		
-		label.show();
-		
-		
-	}
-	
-	public static final Color brickCol = Color.gray; 
-	
-	private void drawBrick(int c, int r) {
-		label.filledRectangleLL(c, r, 1, 1, brickCol);
-		label.rectangleLL(c, r, 1, 1);
-	}
-	
-	public void drawNext(int slot, int orient) {
-		for(int i = 0; i < pWidth[nextPiece][orient]; i++) {
-			for(int j = pBottom[nextPiece][orient][i]; j <pTop[nextPiece][orient][i]; j++) {
-				drawBrick(i+slot, j+ROWS+1);
-			}
-		}
-		label.show();
-	}
-	
-	//visualization
-	//clears the area where the next piece is shown (top)
-	public void clearNext() {
-		label.filledRectangleLL(0, ROWS+.9, COLS, 4.2, TLabel.DEFAULT_CLEAR_COLOR);
-		label.line(0, 0, 0, ROWS+5);
-		label.line(COLS, 0, COLS, ROWS+5);
-	}
-}
-/*
- * When used to record turns, x is turn, y is nextPiece, turn is rowsCleared
- */
-class Triplet {
-	public int x, y, turn;
-	public Triplet(int x, int y, int turn) {
-		this.x = x;
-		this.y = y;
-		this.turn = turn;
-	}
-}
-
-
-class Pair {
-	public int x, height;
-	public Pair(int x, int height) {
-		this.x = x;
-		this.height = height;
-	}
-}
-
-/*
- * PMSTriplet means piece-move-score triplet :P
- */
-class PMSTriplet implements Comparable<PMSTriplet> {
-	public int piece, move;
-	public double score;
-	
-	public PMSTriplet(int p, int m, double s) {
-		piece = p;
-		move = m;
-		score = s;
-	}
-	
-	public int compareTo(PMSTriplet another) {
-		double diff = score - another.score;
-		if (diff < 0D) {
-			return -1;
-		} else if (diff > 0D) {
-			return 1;
-		} else 
-			return 0;
-	}
-}

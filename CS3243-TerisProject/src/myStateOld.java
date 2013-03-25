@@ -1,9 +1,24 @@
 import java.awt.Color;
+import java.util.Stack;
 
-
-
-
-public class State {
+/**
+ * myState
+ * @author DIdiHL
+ * (spiritually) extends State to make it comparable (for look ahead)
+ * and to hold the action that leads to this state
+ */
+class myStateOld extends State{
+	// Previous move that led to this state
+	private int nextMove;
+	// The score of this state (utility)
+	private double score;
+	// number of negative permits assigned to semaphore.
+	public static int numPermits;
+	// Records the rounds of changes
+	Stack<Stack<Triplet>> roundsOfChangesField;
+	Stack<Stack<Pair>> roundsOfChangesTop;
+	Stack<Triplet> roundsOfChangesTurn;
+	
 	public static final int COLS = 10;
 	public static final int ROWS = 21;
 	public static final int N_PIECES = 7;
@@ -16,11 +31,12 @@ public class State {
 	
 
 	
-	public TLabel label;
+	//public TLabel label;
 	
 	//current turn
 	private int turn = 0;
 	private int cleared = 0;
+	private int justCleared = 0;
 	
 	//each square in the grid - int means empty - other values mean the turn it was placed
 	private int[][] field = new int[ROWS][COLS];
@@ -44,6 +60,8 @@ public class State {
 	//possible orientations for a given piece type
 	protected static int[] pOrients = {1,2,4,4,4,2,2};
 	
+	//These attributes are kept here coz I don't want to modify so much
+	//code in the move method
 	//the next several arrays define the piece vocabulary in detail
 	//width of the pieces [piece ID][orientation]
 	protected static int[][] pWidth = {
@@ -86,6 +104,7 @@ public class State {
 	
 	//initialize legalMoves
 	{
+		numPermits = 1;
 		//for each piece type
 		for(int i = 0; i < N_PIECES; i++) {
 			//figure number of legal moves
@@ -103,12 +122,15 @@ public class State {
 				for(int k = 0; k < COLS+1-pWidth[i][j];k++) {
 					legalMoves[i][n][ORIENT] = j;
 					legalMoves[i][n][SLOT] = k;
+					--numPermits;
 					n++;
 				}
 			}
 		}
 	
 	}
+	
+	
 	
 	
 	public int[][] getField() {
@@ -138,6 +160,10 @@ public class State {
     public static int[][][] getpTop() {
         return pTop;
     }
+    
+    public static int[][] getLegalMoves(int i) {
+    	return legalMoves[i];
+    }
 
 
 	public int getNextPiece() {
@@ -156,19 +182,73 @@ public class State {
 		return turn;
 	}
 	
+	public int getNextMove() {
+		return nextMove;
+	}
 	
+	public double getScore() {
+		return score;
+	}
+	
+	public int getJustCleared() {
+		return justCleared;
+	}
+	
+	public void setNextPiece(int np ) {
+		nextPiece = np;
+	}
+	
+	public void setScore(double sc) {
+		score = sc;
+	}
+	
+	// Reset rounds of changes
+	public void reset() {
+		roundsOfChangesField = new Stack<Stack<Triplet>>();
+		roundsOfChangesTop = new Stack<Stack<Pair>>();
+		roundsOfChangesTurn = new Stack<Triplet>();
+	}
 	
 	//constructor
-	public State() {
-		nextPiece = randomPiece();
-
+	public myStateOld(State s) {
+		copyState(s);
+		reset();
 	}
+	
+	public myStateOld(State s, int newPiece, int newMove) {
+		copyState(s);
+		nextPiece = newPiece;
+		nextMove = newMove;
+		reset();
+	}
+	
+	public myStateOld(State s, int newPiece, int newMove, double points) {
+		copyState(s);
+		nextPiece = newPiece;
+		nextMove = newMove;
+		score = points;
+		reset();
+	}
+
+	private void copyState(State s) {
+		label = s.label;
+		nextPiece = s.getNextPiece();
+		/*
+		top = copy1Array(s.getTop());
+		field = copy2Array(s.getField());
+		*/
+		top = s.getTop();
+		field = s.getField();
+		lost = s.hasLost();
+		cleared = s.getRowsCleared();
+		turn = s.getTurnNumber();
+	}
+
 	
 	//random integer, returns 0-6
 	private int randomPiece() {
 		return (int)(Math.random()*N_PIECES);
 	}
-	
 
 
 	
@@ -179,6 +259,7 @@ public class State {
 	
 	//make a move based on the move index - its order in the legalMoves list
 	public void makeMove(int move) {
+		//System.out.println("NextPiece: " + nextPiece + " Move: " + move);//for debugging
 		makeMove(legalMoves[nextPiece][move]);
 	}
 	
@@ -189,6 +270,9 @@ public class State {
 	
 	//returns false if you lose - true otherwise
 	public boolean makeMove(int orient, int slot) {
+		Stack<Triplet> fieldChanges = new Stack<Triplet>();
+		Stack<Pair> topChanges = new Stack<Pair>();
+		Triplet turnInfo = new Triplet(turn, nextPiece, cleared);
 		turn++;
 		//height if the first column makes contact
 		int height = top[slot]-pBottom[nextPiece][orient][0];
@@ -199,7 +283,11 @@ public class State {
 		
 		//check if game ended
 		if(height+pHeight[nextPiece][orient] >= ROWS) {
+			//System.out.println("MIIIIIIIIIIIPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");//for debugging
 			lost = true;
+			roundsOfChangesField.push(fieldChanges);
+			roundsOfChangesTop.push(topChanges);
+			roundsOfChangesTurn.push(turnInfo);
 			return false;
 		}
 
@@ -209,12 +297,14 @@ public class State {
 			
 			//from bottom to top of brick
 			for(int h = height+pBottom[nextPiece][orient][i]; h < height+pTop[nextPiece][orient][i]; h++) {
+				fieldChanges.push(new Triplet(h, i+slot, field[h][i+slot]));
 				field[h][i+slot] = turn;
 			}
 		}
 		
 		//adjust top
 		for(int c = 0; c < pWidth[nextPiece][orient]; c++) {
+			topChanges.push(new Pair(slot+c, top[slot+c]));
 			top[slot+c]=height+pTop[nextPiece][orient][c];
 		}
 		
@@ -239,9 +329,12 @@ public class State {
 
 					//slide down all bricks
 					for(int i = r; i < top[c]; i++) {
+						fieldChanges.push(new Triplet(i, c, field[i][c]));
+						fieldChanges.push(new Triplet(i+1, c, field[i+1][c]));
 						field[i][c] = field[i+1][c];
 					}
 					//lower the top
+					topChanges.push(new Pair(c, top[c]));
 					top[c]--;
 					while(top[c]>=1 && field[top[c]-1][c]==0)	top[c]--;
 				}
@@ -250,11 +343,36 @@ public class State {
 	
 
 		//pick a new piece
-		nextPiece = randomPiece();
-		
-
-		
+		//nextPiece = randomPiece();
+		justCleared = rowsCleared;
+		roundsOfChangesField.push(fieldChanges);
+		roundsOfChangesTop.push(topChanges);
+		roundsOfChangesTurn.push(turnInfo);
 		return true;
+	}
+	
+	// Undo the last round of change taken from the stack if there is nothin
+	// in the stack, return false. Otherwise return true;
+	public boolean undo() {
+		if (!roundsOfChangesField.isEmpty()) {
+			Stack<Triplet> fieldChanges = roundsOfChangesField.pop();
+			Stack<Pair> topChanges = roundsOfChangesTop.pop();
+			Triplet turnInfo = roundsOfChangesTurn.pop();
+			while (!fieldChanges.isEmpty()) {
+				Triplet F = fieldChanges.pop();
+				field[F.x][F.y] = F.turn;
+			}
+			while (!topChanges.isEmpty()) {
+				Pair T = topChanges.pop();
+				top[T.x] = T.height;
+			}
+			turn = turnInfo.x;
+			nextPiece = turnInfo.y;
+			cleared = turnInfo.turn;
+			return true;
+		} else {
+			return false;
+		}
 	}
 	
 	public void draw() {
@@ -310,12 +428,4 @@ public class State {
 		label.line(0, 0, 0, ROWS+5);
 		label.line(COLS, 0, COLS, ROWS+5);
 	}
-	
-	public String toString() {
-		return "Next Piece: " + nextPiece;
-	}
-	
-
 }
-
-
