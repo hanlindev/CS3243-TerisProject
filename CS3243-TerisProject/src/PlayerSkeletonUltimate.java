@@ -383,9 +383,11 @@ public class PlayerSkeletonUltimate extends RecursiveTask<FitParameters>{
 		//new TFrame(s);
 		PlayerSkeletonUltimate p = new PlayerSkeletonUltimate();
 		while (!s.hasLost()) {
+			/*
 			if (count > 50000) {
 				break;
 			}// for debugging
+			*/
 			s.makeMove(p.pickMove(s, s.legalMoves()));
 			/*
 			 * Four Parameter: useful for PSO

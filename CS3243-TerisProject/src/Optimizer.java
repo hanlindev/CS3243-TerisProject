@@ -1,12 +1,40 @@
 // Optimize feature weights using PSO
 import net.sourceforge.jswarm_pso.*;
+import java.io.*;
 import java.util.concurrent.*;
 import java.util.*;
 public class Optimizer {
-	static double[] parameters = {-3.3200740, 2.70317569, -2.7157289, -5.1061407, -6.9380080, -2.4075407, -1.0};//for debugging
-	static public void main(String[] args) {
-		MyFitnessFunction player = new MyFitnessFunction(64);
-		System.out.println("Fitness: " + player.evaluate(parameters));
+	static public double[] parameters = {-3.3200740, 2.70317569, -2.7157289, -5.1061407, -6.9380080, -2.4075407, -1.0};
+	static public void main(String[] args) throws Exception{
+		BufferedWriter bw = new BufferedWriter(new FileWriter("bestPositions.txt"));
+		MyParticle aParticle = new MyParticle();
+		Swarm swarm = new Swarm(30, aParticle, new MyFitnessFunction(110));
+		double inertia = 0.72, particleInc = 1.42, globalInc = 1.42, maxVelocity = 0.5;
+		int iterations = 10;
+		
+		swarm.setInertia(inertia);
+		swarm.setParticleIncrement(particleInc);
+		swarm.setGlobalIncrement(globalInc);
+		swarm.setMaxMinVelocity(maxVelocity);
+		swarm.setMaxPosition(100);
+		swarm.setMinPosition(-100);
+		
+		for (int i = 0; i < iterations; ++i) {
+			swarm.evolve();
+			double[] bestPosition = swarm.getBestPosition();
+			String comma = "", out = "";
+			for (int j = 0; j < bestPosition.length; ++j) {
+				out += comma + bestPosition[j];
+				comma = ", ";
+			}
+			out += "\n";
+			bw.write(out);
+			bw.flush();
+		}
+		bw.write(swarm.toStringStats() + "\n");
+		bw.flush();
+		bw.close();
+		System.out.println(swarm.toStringStats());
 	}
 }
 
@@ -21,7 +49,6 @@ class MyFitnessFunction extends FitnessFunction {
 	}
 	
 	@Override
-	
 	public double evaluate(double[] position) {
 		double rv = 0D;
 		ArrayList<Future<FitParameters>> futureList = new ArrayList<Future<FitParameters>>();
@@ -48,5 +75,4 @@ class MyFitnessFunction extends FitnessFunction {
 		rv -= ((p.Cmax - p.Cavg) / p.Cmax) * 500D;
 		return rv;
 	}
-	
 }
