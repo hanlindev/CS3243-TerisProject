@@ -3,6 +3,27 @@ import java.io.FileWriter;
 
 public class PlayerSkeleton3 {
 
+	/*
+	 * weight parameter
+	 */
+	double landheight;
+	double rowclear;
+	double rowtransition;
+	double columntransition;
+	double holenumber;
+	double wellnumber;
+	double pileheight;
+	
+	public PlayerSkeleton3() {
+		landheight 			= -3.3200740;
+		rowclear 			= 2.70317569;
+		rowtransition 		= -2.7157289;
+		columntransition 	= -5.1061407;
+		holenumber 			= -6.9380080;
+		wellnumber 			= -2.4075407;
+		//pileheight 			= -1.0;// feature added
+		pileheight = 0D;
+	}
 	// implement this function to have a working system
 	public int pickMove(State s, int[][] legalMoves) {
 		double[] eval = new double[legalMoves.length];
@@ -110,6 +131,7 @@ public class PlayerSkeleton3 {
 			}
 		}else return -0xffff;
 
+		/*
 		double result =
 				GetLandingHeight(pHeight[nextPiece][orient], height) * -4.500158825082766
 				+ rowsCleared * 3.4181268101392694 + GetRowTransitions(field)
@@ -117,9 +139,32 @@ public class PlayerSkeleton3 {
 				* -9.348695305445199 + GetNumberOfHoles(top, field)
 				* -7.899265427351652 + GetWellSums(top, field)
 				* -3.3855972247263626;
+		*/
+		double result = GetLandingHeight(pHeight[nextPiece][orient], height) * landheight
+				+ rowsCleared * rowclear + GetRowTransitions(field)
+				* rowtransition + GetColumnTransitions(field)
+				* columntransition + GetNumberOfHoles(top, field)
+				* holenumber + GetWellSums(top, field)
+				* wellnumber+getMax(top)*pileheight;
 		return result;
 	}
 	
+	/**
+	 * get the max column height of the board
+	 * 
+	 * @param top
+	 *            :top array of state
+	 * @return max column height
+	 */
+	private int getMax(int[] top) {
+		int max = top[0];
+
+		for (int i = 0; i < top.length; i++) {
+			max = Math.max(max, top[i]);
+		}
+
+		return max;
+	}
 
 	public int GetLandingHeight(int pHeight, int height) {
 		int LH = 0;
@@ -156,7 +201,7 @@ public class PlayerSkeleton3 {
 					CT++;
 				}
 				
-				if (board[State.ROWS-2][col] == 0)
+				if (board[State.ROWS-1][col] == 0)
 					CT++;
 				previous_state = board[row][col];
 			}
@@ -237,7 +282,7 @@ public class PlayerSkeleton3 {
 	}
 
 	public static void main(String[] args) throws Exception {
-		int rounds = 50;
+		int rounds = 1;
 		int score = 0;
 		for (int i = 0; i < 50; ++i) {
 			int result = testNormal(i);
@@ -249,8 +294,9 @@ public class PlayerSkeleton3 {
 	}
 	
 	public static int testNormal(int no) throws Exception{
-		int rounds = 10;
+		int rounds = 1;
 		int score = 0;
+		int count = 0;
 		BufferedWriter bw = new BufferedWriter(new FileWriter("Player3NoLookAhead" + no + ".txt"));
 		for (int i = 0; i < rounds; ++i) {
 			State s = new State();
@@ -259,10 +305,11 @@ public class PlayerSkeleton3 {
 			int rowsCleared = 0;
 			while (!s.hasLost()) {
 				s.makeMove(p.pickMove(s, s.legalMoves()));
+				++count;
 				//s.draw();
 				//s.drawNext(0, 0);
 				rowsCleared = s.getRowsCleared();
-				if (rowsCleared % 1000 == 0) {
+				if (count % 1000 == 0) {
 					System.out.println(rowsCleared);
 				}
 				/*try {

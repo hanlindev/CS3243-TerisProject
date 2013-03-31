@@ -13,7 +13,6 @@ public class PlayersTest {
 		player.play();
 	}
 	
-	@Test
 	public void TestPara() {
 		MyFitnessFunction player = new MyFitnessFunction(110);
 		System.out.println("Fitness: " + player.evaluate(parameters));

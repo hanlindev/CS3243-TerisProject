@@ -4,13 +4,16 @@ import java.io.*;
 import java.util.concurrent.*;
 import java.util.*;
 public class Optimizer {
+	public static int iter;
 	static public double[] parameters = {-3.3200740, 2.70317569, -2.7157289, -5.1061407, -6.9380080, -2.4075407, -1.0};
 	static public void main(String[] args) throws Exception{
+		int numProcess = Integer.parseInt(args[0]);
+		int iterations = Integer.parseInt(args[1]);
+		System.out.println(numProcess);//for debugging
 		BufferedWriter bw = new BufferedWriter(new FileWriter("bestPositions.txt"));
 		MyParticle aParticle = new MyParticle();
-		Swarm swarm = new Swarm(30, aParticle, new MyFitnessFunction(110));
+		Swarm swarm = new Swarm(25, aParticle, new MyFitnessFunction(numProcess));
 		double inertia = 0.72, particleInc = 1.42, globalInc = 1.42, maxVelocity = 0.5;
-		int iterations = 10;
 		
 		swarm.setInertia(inertia);
 		swarm.setParticleIncrement(particleInc);
@@ -20,6 +23,7 @@ public class Optimizer {
 		swarm.setMinPosition(-100);
 		
 		for (int i = 0; i < iterations; ++i) {
+			iter = i;
 			swarm.evolve();
 			double[] bestPosition = swarm.getBestPosition();
 			String comma = "", out = "";
@@ -53,7 +57,7 @@ class MyFitnessFunction extends FitnessFunction {
 		double rv = 0D;
 		ArrayList<Future<FitParameters>> futureList = new ArrayList<Future<FitParameters>>();
 		for (int i = 0; i < numProcess; ++i) {
-			futureList.add(mainPool.submit(new PlayerSkeletonUltimate(position)));
+			futureList.add(mainPool.submit(new PlayerSkeletonUltimate(position, Optimizer.iter, i)));
 		}
 		for (int i = 0; i < numProcess; ++i) {
 			FitParameters aParam = new FitParameters();

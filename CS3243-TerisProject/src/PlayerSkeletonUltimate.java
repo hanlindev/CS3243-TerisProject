@@ -1,6 +1,11 @@
 import java.util.concurrent.*;
 public class PlayerSkeletonUltimate extends RecursiveTask<FitParameters>{
 	/*
+	 * Debugging parameters
+	 */
+	public int iteration = 0;
+	public int playerNo = 0;
+	/*
 	 * weight parameter
 	 */
 	double landheight;
@@ -73,6 +78,18 @@ public class PlayerSkeletonUltimate extends RecursiveTask<FitParameters>{
 		holenumber = parameters[4];
 		wellnumber = parameters[5];
 		pileheight = parameters[6];
+	}
+	
+	public PlayerSkeletonUltimate(double[] parameters, int iteration, int playerNo) {
+		landheight = parameters[0];
+		rowclear = parameters[1];
+		rowtransition = parameters[2];
+		columntransition = parameters[3];
+		holenumber = parameters[4];
+		wellnumber = parameters[5];
+		pileheight = parameters[6];
+		this.iteration = iteration;
+		this.playerNo = playerNo;
 	}
 	
 	/**
@@ -412,9 +429,13 @@ public class PlayerSkeletonUltimate extends RecursiveTask<FitParameters>{
 			 //s.draw();
 			 //s.drawNext(0, 0);
 //			System.out.println("new   " + s.getRowsCleared());
-			
+			if (count % 10000 == 0) {
+				System.out.println("Iteration " + iteration + " Player " + playerNo + " Now cleared: " + s.getRowsCleared());//for debugging
+			}
+			/*
 			  try { Thread.sleep(3); } catch (InterruptedException e) {
 			  e.printStackTrace(); }
+			  */
 			 
 		}
 		L = s.getRowsCleared();
@@ -432,7 +453,10 @@ public class PlayerSkeletonUltimate extends RecursiveTask<FitParameters>{
 		return new FitParameters(L, Pmax, Psum, Hmax, Hsum, Rmax, Rsum, Cmax, Csum, count);
 	}
 	
-
+	static public void main(String[] args) {
+		PlayerSkeletonUltimate player = new PlayerSkeletonUltimate();
+		player.play();
+	}
 }
 
 class FitParameters {
