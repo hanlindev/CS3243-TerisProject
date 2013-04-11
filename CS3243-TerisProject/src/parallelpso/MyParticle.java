@@ -8,7 +8,9 @@ public class MyParticle extends Particle{
 	
 	public MyParticle() {
 		super(dim);
-		super.setPosition(position);
+		double[] aPosition = new double[dim];
+		System.arraycopy(position, 0, aPosition, 0, dim);
+		super.setPosition(aPosition);
 	}
 	
 	public MyParticle(int index) {
@@ -25,5 +27,10 @@ public class MyParticle extends Particle{
 			comma = ", ";
 		}
 		return "[" + rv + "]";
+	}
+	
+	@Override
+	public Particle selfFactory() {
+		return new MyParticle();
 	}
 }

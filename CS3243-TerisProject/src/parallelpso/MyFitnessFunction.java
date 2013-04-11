@@ -1,10 +1,7 @@
 package parallelpso;
 
 import java.util.ArrayList;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 import Optimizer.FitParameters;
 import Optimizer.Optimizer;
@@ -15,13 +12,13 @@ import net.sourceforge.jswarm_pso.Particle;
 
 public class MyFitnessFunction extends FitnessFunction implements Callable<Double> {
 	private int numProcess;
-	ForkJoinPool mainPool;
+	ExecutorService mainPool;
 	Particle toBeEvaluatedByCall = null;
 	public MyFitnessFunction(int numCores) {
 		// Simulating a block
 		numProcess = numCores;
 		setMaximize(true);
-		mainPool = new ForkJoinPool(numCores);
+		mainPool = Executors.newFixedThreadPool(numCores * 5);
 	}
 	
 	@Override

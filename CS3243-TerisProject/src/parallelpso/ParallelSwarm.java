@@ -19,6 +19,7 @@ public class ParallelSwarm extends Swarm{
 		for (int i = 0; i < numberOfParticles; ++i) {
 			this.particleFitnessFunction.add(this.sampleFitnessFunction.getInstance());
 		}
+		super.setParticleUpdate(new ParticleUpdateRandomByParticle(sampleParticle));
 	}
 	
 	public ParallelSwarm(int numberOfParticles, Particle sampleParticle,
@@ -30,6 +31,10 @@ public class ParallelSwarm extends Swarm{
 		for (int i = 0; i < numberOfParticles; ++i) {
 			this.particleFitnessFunction.add(this.sampleFitnessFunction.getInstance());
 		}
+		super.setParticleUpdate(new ParticleUpdateFullyRandom(sampleParticle));
+		/*
+		
+		*/
 	}
 	
 	@Override
@@ -65,18 +70,14 @@ public class ParallelSwarm extends Swarm{
 			aFunction.setParticle(particles[i]);
 			futureList.add(this.mainPool.submit(aFunction));
 		}
-		// Wait for all fitness functions to compelte
-		try {
-			// This is nearly equivalent to running for indefinite period of time
-			this.mainPool.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
 		
 		// Update fitness value
 		for (int i = 0; i < particles.length; ++i) {
 			try {
 				double fit = futureList.get(i).get();
+				
+				++numberOfEvaliations;
+				super.setNumberOfEvaliations(numberOfEvaliations);
 				
 				// Update 'best global' position
 				if (fitnessFunction.isBetterThan(bestFitness, fit)) {
@@ -84,6 +85,7 @@ public class ParallelSwarm extends Swarm{
 					bestParticleIndex = i;
 					if (bestPosition == null) bestPosition = new double[sampleParticle.getDimension()];
 					particles[bestParticleIndex].copyPosition(bestPosition);
+					super.setBestPosition(bestPosition);
 				}
 				
 				// Update 'best neighborhood'
@@ -98,5 +100,40 @@ public class ParallelSwarm extends Swarm{
 			}
 		}
 	}
+	
+	/*
+	@Override
+	public void init() {
+		Particle[] particles = new Particle[getNumberOfParticles()];
+		
+		double[] maxPosition = super.getMaxPosition();
+		double[] minPosition = super.getMinPosition();
+		double[] maxVelocity = super.getMaxVelocity();
+		double[] minVelocity = super.getMinVelocity();
+		Particle sampleParticle = super.getSampleParticle();
+		// Check constraints (they will be used to initialize particles)
+		if (maxPosition == null) throw new RuntimeException("maxPosition array is null!");
+		if (minPosition == null) throw new RuntimeException("maxPosition array is null!");
+		if (maxVelocity == null) {
+			// Default maxVelocity[]
+			int dim = sampleParticle.getDimension();
+			maxVelocity = new double[dim];
+			for (int i = 0; i < dim; i++)
+				maxVelocity[i] = (maxPosition[i] - minPosition[i]) / 2.0;
+		}
+		if (minVelocity == null) {
+			// Default minVelocity[]
+			int dim = sampleParticle.getDimension();
+			minVelocity = new double[dim];
+			for (int i = 0; i < dim; i++)
+				minVelocity[i] = -maxVelocity[i];
+		}
+		
+		super.setMaxVelocity(maxVelocity);
+		super.setMinVelocity(minVelocity);
+		
+
+	}
+	*/
 
 }

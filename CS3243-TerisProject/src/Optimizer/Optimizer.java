@@ -12,10 +12,9 @@ public class Optimizer {
 	static public void main(String[] args) throws Exception{
 		int numProcess = Integer.parseInt(args[0]);
 		int iterations = Integer.parseInt(args[1]);
-		System.out.println(numProcess);//for debugging
 		BufferedWriter bw = new BufferedWriter(new FileWriter("bestPositions.txt"));
 		MyParticle aParticle = new MyParticle();
-		Swarm swarm = new ParallelSwarm(3, aParticle, new MyFitnessFunction(numProcess), numProcess);
+		Swarm swarm = new ParallelSwarm(30, aParticle, new MyFitnessFunction(numProcess), numProcess);
 		double inertia = 0.72, particleInc = 1.42, globalInc = 1.42, maxVelocity = 0.5;
 		
 		swarm.setInertia(inertia);

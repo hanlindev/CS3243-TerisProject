@@ -1,6 +1,6 @@
 package Optimizer;
 import java.util.concurrent.*;
-public class PlayerSkeletonUltimate extends RecursiveTask<FitParameters>{
+public class PlayerSkeletonUltimate implements Callable<FitParameters>{
 	/*
 	 * Debugging parameters
 	 */
@@ -430,9 +430,8 @@ public class PlayerSkeletonUltimate extends RecursiveTask<FitParameters>{
 			 //s.draw();
 			 //s.drawNext(0, 0);
 //			System.out.println("new   " + s.getRowsCleared());
-			if (count == 1000) {
+			if (count % 10000 == 0) {
 				System.out.println("Iteration " + iteration + " Player " + playerNo + " Now cleared: " + s.getRowsCleared());//for debugging
-				return;//for debugging
 			}
 			/*
 			  try { Thread.sleep(3); } catch (InterruptedException e) {
@@ -450,7 +449,7 @@ public class PlayerSkeletonUltimate extends RecursiveTask<FitParameters>{
 	 * Used for optimization using PSO
 	 */
 	@Override
-	protected FitParameters compute() {
+	public FitParameters call(){
 		play();
 		return new FitParameters(L, Pmax, Psum, Hmax, Hsum, Rmax, Rsum, Cmax, Csum, count);
 	}
