@@ -430,8 +430,9 @@ public class PlayerSkeletonUltimate extends RecursiveTask<FitParameters>{
 			 //s.draw();
 			 //s.drawNext(0, 0);
 //			System.out.println("new   " + s.getRowsCleared());
-			if (count % 10000 == 0) {
+			if (count == 1000) {
 				System.out.println("Iteration " + iteration + " Player " + playerNo + " Now cleared: " + s.getRowsCleared());//for debugging
+				return;//for debugging
 			}
 			/*
 			  try { Thread.sleep(3); } catch (InterruptedException e) {

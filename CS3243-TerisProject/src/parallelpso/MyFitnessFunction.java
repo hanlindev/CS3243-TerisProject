@@ -57,10 +57,15 @@ public class MyFitnessFunction extends FitnessFunction implements Callable<Doubl
 		if (toBeEvaluatedByCall == null) {
 			throw new RuntimeException("Nothing to evaluate! Remember to set the position before submitting.");
 		} else {
-			double rv = evaluate(toBeEvaluatedByCall);
+			double rv = this.evaluate(toBeEvaluatedByCall.getPosition());
+			toBeEvaluatedByCall.setFitness(rv, super.isMaximize());
 			toBeEvaluatedByCall = null;
 			return rv;
 		}
+	}
+	
+	public void setParticle(Particle p) {
+		this.toBeEvaluatedByCall = p;
 	}
 	
 	public MyFitnessFunction getInstance() {

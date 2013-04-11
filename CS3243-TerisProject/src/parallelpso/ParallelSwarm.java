@@ -1,5 +1,6 @@
 package parallelpso;
 import java.util.concurrent.*;
+
 import net.sourceforge.jswarm_pso.*;
 import net.sourceforge.jswarm_pso.Particle;
 import java.util.*;
@@ -7,18 +8,28 @@ import java.util.*;
 public class ParallelSwarm extends Swarm{
 	ForkJoinPool mainPool;
 	MyFitnessFunction sampleFitnessFunction;
+	ArrayList<MyFitnessFunction> particleFitnessFunction;
 	// TODO add a list of fitness functions
 
 	public ParallelSwarm(int numberOfParticles, Particle sampleParticle,
 			MyFitnessFunction fitnessFunction) {
 		super(numberOfParticles, sampleParticle, fitnessFunction);
 		sampleFitnessFunction = fitnessFunction;
+		this.particleFitnessFunction = new ArrayList<MyFitnessFunction>(numberOfParticles);
+		for (int i = 0; i < numberOfParticles; ++i) {
+			this.particleFitnessFunction.add(this.sampleFitnessFunction.getInstance());
+		}
 	}
 	
 	public ParallelSwarm(int numberOfParticles, Particle sampleParticle,
-			FitnessFunction fitnessFunction, int numProcess) {
+			MyFitnessFunction fitnessFunction, int numProcess) {
 		super(numberOfParticles, sampleParticle, fitnessFunction);
 		mainPool = new ForkJoinPool(numProcess * numberOfParticles * 5);
+		sampleFitnessFunction = fitnessFunction;
+		this.particleFitnessFunction = new ArrayList<MyFitnessFunction>(numberOfParticles);
+		for (int i = 0; i < numberOfParticles; ++i) {
+			this.particleFitnessFunction.add(this.sampleFitnessFunction.getInstance());
+		}
 	}
 	
 	@Override
@@ -49,27 +60,42 @@ public class ParallelSwarm extends Swarm{
 		//---
 		ArrayList<Future<Double>> futureList = new ArrayList<Future<Double>>(super.getNumberOfParticles());
 		for (int i = 0; i < particles.length; ++i) {
-			// TODO implement
+			// Set fitness function instances corresponding particles and submit to pool
+			MyFitnessFunction aFunction = particleFitnessFunction.get(i);
+			aFunction.setParticle(particles[i]);
+			futureList.add(this.mainPool.submit(aFunction));
 		}
-		for (int i = 0; i < particles.length; i++) {
-			// Evaluate particle
-			double fit = fitnessFunction.evaluate(particles[i]);
-
-			numberOfEvaliations++; // Update counter
-
-			// Update 'best global' position
-			if (fitnessFunction.isBetterThan(bestFitness, fit)) {
-				bestFitness = fit; // Copy best fitness, index, and position vector
-				bestParticleIndex = i;
-				if (bestPosition == null) bestPosition = new double[sampleParticle.getDimension()];
-				particles[bestParticleIndex].copyPosition(bestPosition);
+		// Wait for all fitness functions to compelte
+		try {
+			// This is nearly equivalent to running for indefinite period of time
+			this.mainPool.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		
+		// Update fitness value
+		for (int i = 0; i < particles.length; ++i) {
+			try {
+				double fit = futureList.get(i).get();
+				
+				// Update 'best global' position
+				if (fitnessFunction.isBetterThan(bestFitness, fit)) {
+					bestFitness = fit;
+					bestParticleIndex = i;
+					if (bestPosition == null) bestPosition = new double[sampleParticle.getDimension()];
+					particles[bestParticleIndex].copyPosition(bestPosition);
+				}
+				
+				// Update 'best neighborhood'
+				if (neighborhood != null) {
+					neighborhood.update(this, particles[i]);
+				}
+				
+				System.out.println("Particle " + i + " has position: " + particles[i].toString());//for debugging
+			} catch (InterruptedException | ExecutionException e) {
+				e.printStackTrace();
+				return;
 			}
-
-			// Update 'best neighborhood' 
-			if (neighborhood != null) {
-				neighborhood.update(this, particles[i]);
-			}
-
 		}
 	}
 

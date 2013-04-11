@@ -5,8 +5,7 @@ import java.io.*;
 import java.util.concurrent.*;
 import java.util.*;
 
-import parallelpso.MyFitnessFunction;
-import parallelpso.MyParticle;
+import parallelpso.*;
 public class Optimizer {
 	public static int iter;
 	static public double[] parameters = {-3.3200740, 2.70317569, -2.7157289, -5.1061407, -6.9380080, -2.4075407, -1.0};
@@ -16,7 +15,7 @@ public class Optimizer {
 		System.out.println(numProcess);//for debugging
 		BufferedWriter bw = new BufferedWriter(new FileWriter("bestPositions.txt"));
 		MyParticle aParticle = new MyParticle();
-		Swarm swarm = new Swarm(25, aParticle, new MyFitnessFunction(numProcess), numProcess);
+		Swarm swarm = new ParallelSwarm(3, aParticle, new MyFitnessFunction(numProcess), numProcess);
 		double inertia = 0.72, particleInc = 1.42, globalInc = 1.42, maxVelocity = 0.5;
 		
 		swarm.setInertia(inertia);
