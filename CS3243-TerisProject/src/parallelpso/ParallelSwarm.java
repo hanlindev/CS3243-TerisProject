@@ -6,9 +6,9 @@ import net.sourceforge.jswarm_pso.Particle;
 import java.util.*;
 
 public class ParallelSwarm extends Swarm{
-	ForkJoinPool mainPool;
+	public ExecutorService mainPool;
 	MyFitnessFunction sampleFitnessFunction;
-	ArrayList<MyFitnessFunction> particleFitnessFunction;
+	public ArrayList<MyFitnessFunction> particleFitnessFunction;
 	// TODO add a list of fitness functions
 
 	public ParallelSwarm(int numberOfParticles, Particle sampleParticle,
@@ -25,7 +25,7 @@ public class ParallelSwarm extends Swarm{
 	public ParallelSwarm(int numberOfParticles, Particle sampleParticle,
 			MyFitnessFunction fitnessFunction, int numProcess) {
 		super(numberOfParticles, sampleParticle, fitnessFunction);
-		mainPool = new ForkJoinPool(numProcess * numberOfParticles * 5);
+		mainPool = Executors.newFixedThreadPool(numProcess * numberOfParticles * 5);
 		sampleFitnessFunction = fitnessFunction;
 		this.particleFitnessFunction = new ArrayList<MyFitnessFunction>(numberOfParticles);
 		for (int i = 0; i < numberOfParticles; ++i) {
@@ -94,7 +94,10 @@ public class ParallelSwarm extends Swarm{
 				}
 				
 				System.out.println("Particle " + i + " has position: " + particles[i].toString());//for debugging
-			} catch (InterruptedException | ExecutionException e) {
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+				return;
+			} catch (ExecutionException e) {
 				e.printStackTrace();
 				return;
 			}

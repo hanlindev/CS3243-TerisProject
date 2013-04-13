@@ -12,17 +12,18 @@ public class Optimizer {
 	static public void main(String[] args) throws Exception{
 		int numProcess = Integer.parseInt(args[0]);
 		int iterations = Integer.parseInt(args[1]);
-		BufferedWriter bw = new BufferedWriter(new FileWriter("bestPositions.txt"));
+		String path = args[2];
+		BufferedWriter bw = new BufferedWriter(new FileWriter(path));
 		MyParticle aParticle = new MyParticle();
-		Swarm swarm = new ParallelSwarm(30, aParticle, new MyFitnessFunction(numProcess), numProcess);
+		ParallelSwarm swarm = new ParallelSwarm(30, aParticle, new MyFitnessFunction(numProcess), numProcess);
 		double inertia = 0.72, particleInc = 1.42, globalInc = 1.42, maxVelocity = 0.5;
 		
 		swarm.setInertia(inertia);
 		swarm.setParticleIncrement(particleInc);
 		swarm.setGlobalIncrement(globalInc);
 		swarm.setMaxMinVelocity(maxVelocity);
-		swarm.setMaxPosition(100);
-		swarm.setMinPosition(-100);
+		swarm.setMaxPosition(10);
+		swarm.setMinPosition(-10);
 		
 		for (int i = 0; i < iterations; ++i) {
 			iter = i;
@@ -36,6 +37,11 @@ public class Optimizer {
 			out += "\n";
 			bw.write(out);
 			bw.flush();
+		}
+		// Shutdown protocal
+		swarm.mainPool.shutdown();
+		for (MyFitnessFunction fi : swarm.particleFitnessFunction) {
+			fi.mainPool.shutdown();
 		}
 		bw.write(swarm.toStringStats() + "\n");
 		bw.flush();

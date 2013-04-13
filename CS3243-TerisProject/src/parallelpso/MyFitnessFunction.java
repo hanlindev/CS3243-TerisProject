@@ -12,7 +12,7 @@ import net.sourceforge.jswarm_pso.Particle;
 
 public class MyFitnessFunction extends FitnessFunction implements Callable<Double> {
 	private int numProcess;
-	ExecutorService mainPool;
+	public ExecutorService mainPool;
 	Particle toBeEvaluatedByCall = null;
 	public MyFitnessFunction(int numCores) {
 		// Simulating a block
@@ -32,7 +32,9 @@ public class MyFitnessFunction extends FitnessFunction implements Callable<Doubl
 			FitParameters aParam = new FitParameters();
 			try {
 				aParam = futureList.get(i).get();
-			} catch (InterruptedException | ExecutionException e) {
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			} catch (ExecutionException e) {
 				e.printStackTrace();
 			}
 			rv += calcFitness(aParam);
