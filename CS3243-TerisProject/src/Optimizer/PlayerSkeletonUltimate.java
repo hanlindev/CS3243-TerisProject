@@ -16,18 +16,19 @@ public class PlayerSkeletonUltimate implements Callable<FitParameters>{
 	double holenumber;
 	double wellnumber;
 	double pileheight;
+	double[] weight;
 	
 	// Fitness parameters
-	public int L = 0;
-	public int Pmax = 0;
-	public int Psum = 0;
-	public int Hmax = 0;
-	public int Hsum = 0;
-	public int Rmax = 0;
-	public int Rsum = 0;
-	public int Cmax = 0;
-	public int Csum = 0;
-	public int count = 0;
+	public long L = 0;
+	public long Pmax = 0;
+	public long Psum = 0;
+	public long Hmax = 0;
+	public long Hsum = 0;
+	public long Rmax = 0;
+	public long Rsum = 0;
+	public long Cmax = 0;
+	public long Csum = 0;
+	public long count = 0;
 
 	/**
 	 * Constructor
@@ -399,14 +400,13 @@ public class PlayerSkeletonUltimate implements Callable<FitParameters>{
 	public void play() {
 		State s = new State();
 		//new TFrame(s);
-		PlayerSkeletonUltimate p = new PlayerSkeletonUltimate();
 		while (!s.hasLost()) {
 			/*
 			if (count > 50000) {
 				break;
 			}// for debugging
 			*/
-			s.makeMove(p.pickMove(s, s.legalMoves()));
+			s.makeMove(pickMove(s, s.legalMoves()));
 			/*
 			 * Four Parameter: useful for PSO
 			 */
@@ -430,10 +430,12 @@ public class PlayerSkeletonUltimate implements Callable<FitParameters>{
 			 //s.draw();
 			 //s.drawNext(0, 0);
 //			System.out.println("new   " + s.getRowsCleared());
-			/*if (count == 1000) {
+			
+			if (count == 1000) {
 				System.out.println("Iteration " + iteration + " Player " + playerNo + " Now cleared: " + s.getRowsCleared());//for debugging
 				return;
-			}*/
+			}
+			
 			/*
 			  try { Thread.sleep(3); } catch (InterruptedException e) {
 			  e.printStackTrace(); }

@@ -15,10 +15,10 @@ public class FitParameters {
 	public double Cmax = 0;
 	public double Csum = 0;
 	public double Cavg = 0;
-	public int count = 0;
+	public long count = 0;
 	public FitParameters(){}
-	public FitParameters(int l, int pmax, int psum, int hmax, int hsum,
-			int rmax, int rsum, int cmax, int csum, int count) {
+	public FitParameters(long l, long pmax, long psum, long hmax, long hsum,
+			long rmax, long rsum, long cmax, long csum, long count) {
 		super();
 		L = l;
 		Pmax = pmax;
